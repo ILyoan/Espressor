@@ -30,27 +30,18 @@ impl ToStr for LexMessageType {
 
 pub struct Lexer {
     priv reader: Reader,
-    tokens: ~[token::Token],
 }
 
 impl Lexer {
     pub fn new(src: ~str) -> Lexer {
         Lexer {
             reader: Reader::new(src),
-            tokens: ~[],
         }
     }
 
-    pub fn lex_all(&mut self) {
-        while !self.reader.is_eof() {
-            self.tokens.push(next_token(&mut self.reader));
-        }
-    }
-
-    pub fn lex_next(&mut self) -> Option<token::Token> {
+    pub fn next_token(&mut self) -> Option<token::Token> {
         if !self.reader.is_eof() {
             let token = next_token(&mut self.reader);
-            self.tokens.push(token.clone());
             Some(token)
         } else {
             None
@@ -339,43 +330,36 @@ mod test {
     use super::super::token;
 
     #[test]
-    fn simple_test_1() {
-        let src = ~"var a = 1; var b=2; a + b;";
-        let mut lexer = Lexer::new(src);
-        lexer.lex_all();
-    }
-
-    #[test]
     fn simple_test_2() {
         let src = ~"var a = 1; var b=2; a+ b;";
         let mut lexer = Lexer::new(src);
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"var")));
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"a")));
-        assert_eq!(lexer.lex_next(), Some(token::ASSIGN));
-        assert_eq!(lexer.lex_next(), Some(token::LITERAL(token::LIT_NUMERIC(~"1"))));
-        assert_eq!(lexer.lex_next(), Some(token::SEMICOLON));
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"var")));
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"b")));
-        assert_eq!(lexer.lex_next(), Some(token::ASSIGN));
-        assert_eq!(lexer.lex_next(), Some(token::LITERAL(token::LIT_NUMERIC(~"2"))));
-        assert_eq!(lexer.lex_next(), Some(token::SEMICOLON));
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"a")));
-        assert_eq!(lexer.lex_next(), Some(token::BINOP(token::PLUS)));
-        assert_eq!(lexer.lex_next(), Some(token::IDENT(~"b")));
-        assert_eq!(lexer.lex_next(), Some(token::SEMICOLON));
-        assert_eq!(lexer.lex_next(), None);
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"var")));
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"a")));
+        assert_eq!(lexer.next_token(), Some(token::ASSIGN));
+        assert_eq!(lexer.next_token(), Some(token::LITERAL(token::LIT_NUMERIC(~"1"))));
+        assert_eq!(lexer.next_token(), Some(token::SEMICOLON));
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"var")));
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"b")));
+        assert_eq!(lexer.next_token(), Some(token::ASSIGN));
+        assert_eq!(lexer.next_token(), Some(token::LITERAL(token::LIT_NUMERIC(~"2"))));
+        assert_eq!(lexer.next_token(), Some(token::SEMICOLON));
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"a")));
+        assert_eq!(lexer.next_token(), Some(token::BINOP(token::PLUS)));
+        assert_eq!(lexer.next_token(), Some(token::IDENT(~"b")));
+        assert_eq!(lexer.next_token(), Some(token::SEMICOLON));
+        assert_eq!(lexer.next_token(), None);
     }
 
     #[test]
     fn string_literal() {
         let src = ~"'simple string token1'";
         let mut lexer = Lexer::new(src);
-        assert_eq!(lexer.lex_next(), Some(token::LITERAL(token::LIT_STRING(~"simple string token1"))));
-        assert_eq!(lexer.lex_next(), None);
+        assert_eq!(lexer.next_token(), Some(token::LITERAL(token::LIT_STRING(~"simple string token1"))));
+        assert_eq!(lexer.next_token(), None);
 
         let src = ~"\"'simple string token2'\"";
         let mut lexer = Lexer::new(src);
-        assert_eq!(lexer.lex_next(), Some(token::LITERAL(token::LIT_STRING(~"'simple string token2'"))));
-        assert_eq!(lexer.lex_next(), None);
+        assert_eq!(lexer.next_token(), Some(token::LITERAL(token::LIT_STRING(~"'simple string token2'"))));
+        assert_eq!(lexer.next_token(), None);
     }
 }
