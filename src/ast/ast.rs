@@ -4,11 +4,7 @@
 
 #[crate_type = "lib"];
 
-
-pub use newable::Newable;
 pub use node_type::NodeType;
-
-pub mod newable;
 pub mod node_type;
 
 // Node structures.
@@ -40,18 +36,18 @@ pub struct Program {
 
 pub enum Function {
     // From Declarations.
-    FnFunctionDeclaration(~FunctionDeclaration),
+    FnFunctionDeclaration(~Node<FunctionDeclaration>),
     // From Expressions.
-    FnFunctionExperssion(~FunctionExpression),
-    FnArrowExpression(~ArrowExpression),
+    FnFunctionExperssion(~Node<FunctionExpression>),
+    FnArrowExpression(~Node<ArrowExpression>),
 }
 
 pub struct FunctionBody {
-    id: Option<Identifier>,
+    id: Option<Node<Identifier>>,
     params: ~[Pattern],
     defaults: ~[Expression],
-    rest: Option<Identifier>,
-    body: Either<BlockStatement, Expression>,
+    rest: Option<Node<Identifier>>,
+    body: Either<Node<BlockStatement>, Expression>,
     generator: bool,
     expression: bool,
 }
@@ -60,23 +56,23 @@ pub struct FunctionBody {
 // Statements.
 
 pub enum Statement {
-    StmtEmpty(~EmptyStatement),
-    StmtBlock(~BlockStatement),
-    StmtExpression(~ExpressionStatement),
-    StmtIf(~IfStatement),
-    StmtLabled(~LabledStatement),
-    StmtBreak(~BreakStatement),
-    StmtContinue(~ContinueStatement),
-    StmtWith(~WithStatement),
-    StmtSwitch(~SwitchStatement),
-    StmtReturn(~ReturnStatement),
-    StmtThrow(~ThrowStatement),
-    StmtTry(~TryStatement),
-    StmtWhile(~WhileStatement),
-    StmtDoWhile(~DoWhileStatement),
-    StmtFor(~ForStatement),
-    StmtForIn(~ForInStatement),
-    StmtForOf(~ForOfStatement),
+    StmtEmpty(~Node<EmptyStatement>),
+    StmtBlock(~Node<BlockStatement>),
+    StmtExpression(~Node<ExpressionStatement>),
+    StmtIf(~Node<IfStatement>),
+    StmtLabled(~Node<LabledStatement>),
+    StmtBreak(~Node<BreakStatement>),
+    StmtContinue(~Node<ContinueStatement>),
+    StmtWith(~Node<WithStatement>),
+    StmtSwitch(~Node<SwitchStatement>),
+    StmtReturn(~Node<ReturnStatement>),
+    StmtThrow(~Node<ThrowStatement>),
+    StmtTry(~Node<TryStatement>),
+    StmtWhile(~Node<WhileStatement>),
+    StmtDoWhile(~Node<DoWhileStatement>),
+    StmtFor(~Node<ForStatement>),
+    StmtForIn(~Node<ForInStatement>),
+    StmtForOf(~Node<ForOfStatement>),
     // From Declarations.
     StmtDeclaration(~Declaration),
 }
@@ -98,16 +94,16 @@ pub struct IfStatement {
 }
 
 pub struct LabledStatement {
-    lable: Identifier,
+    lable: Node<Identifier>,
     body: Statement,
 }
 
 pub struct BreakStatement {
-    lable: Option<Identifier>,
+    lable: Option<Node<Identifier>>,
 }
 
 pub struct ContinueStatement {
-    lable: Option<Identifier>,
+    lable: Option<Node<Identifier>>,
 }
 
 pub struct WithStatement {
@@ -117,7 +113,7 @@ pub struct WithStatement {
 
 pub struct SwitchStatement {
     discriminant: Expression,
-    cases: ~[SwitchCase],
+    cases: ~[Node<SwitchCase>],
     lexical: bool,
 }
 
@@ -130,10 +126,10 @@ pub struct ThrowStatement {
 }
 
 pub struct TryStatement {
-    block: BlockStatement,
-    handler: Option<CatchClause>,
-    guardedHandlers: ~[CatchClause],
-    finalizer: Option<BlockStatement>,
+    block: Node<BlockStatement>,
+    handler: Option<Node<CatchClause>>,
+    guardedHandlers: ~[Node<CatchClause>],
+    finalizer: Option<Node<BlockStatement>>,
 }
 
 pub struct WhileStatement {
@@ -147,31 +143,31 @@ pub struct DoWhileStatement {
 }
 
 pub struct ForStatement {
-    init: Option<Either<VariableDeclaration, Expression>>,
+    init: Option<Either<Node<VariableDeclaration>, Expression>>,
     test: Option<Expression>,
     update: Option<Expression>,
     body: Statement,
 }
 
 pub struct ForInStatement {
-    left: Either<VariableDeclaration, Expression>,
+    left: Either<Node<VariableDeclaration>, Expression>,
     right: Expression,
     body: Statement,
     each: bool,
 }
 
 pub struct ForOfStatement {
-    left: Either<VariableDeclaration, Expression>,
+    left: Either<Node<VariableDeclaration>, Expression>,
     right: Expression,
-    body: Statement,    
+    body: Statement,
 }
 
 
 // Declarations.
 
 pub enum Declaration {
-    DeclFunction(~FunctionDeclaration),
-    DeclVariable(~VariableDeclaration),
+    DeclFunction(~Node<FunctionDeclaration>),
+    DeclVariable(~Node<VariableDeclaration>),
 }
 
 pub enum DeclarationKind {
@@ -181,12 +177,12 @@ pub enum DeclarationKind {
 }
 
 pub struct FunctionDeclaration {
-    function: FunctionBody,
+    function: Node<FunctionBody>,
 }
 
 pub struct VariableDeclaration {
-    declarations: ~[VariableDeclarator],
-    kind: DeclarationKind,
+    declarations: ~[Node<VariableDeclarator>],
+    kind: Node<DeclarationKind>,
 }
 
 pub struct VariableDeclarator {
@@ -198,21 +194,21 @@ pub struct VariableDeclarator {
 // Patterns
 
 pub enum Pattern {
-    PtrnObject(~ObjectPattern),
-    PtrnArray(~ArrayPattern),
+    PtrnObject(~Node<ObjectPattern>),
+    PtrnArray(~Node<ArrayPattern>),
     // From Expressions.
     PtrnExpression(~Expression),
     // From Miscellaneous.
-    PtrnIdentifier(~Identifier),
+    PtrnIdentifier(~Node<Identifier>),
 }
 
 pub struct ObjectPatternProperty {
-    key: Either<Literal, Identifier>,
+    key: Either<Node<Literal>, Node<Identifier>>,
     value: Pattern,
 }
 
 pub struct ObjectPattern {
-    properties: ObjectPatternProperty,
+    properties: Node<ObjectPatternProperty>,
 }
 
 pub struct ArrayPattern {
@@ -223,23 +219,23 @@ pub struct ArrayPattern {
 // Expressions
 
 pub enum Expression {
-    ExprThis(~ThisExpression),
-    ExprArray(~ArrayExpression),
-    ExprObject(~ObjectExpression),
-    ExprFunction(~FunctionExpression),
-    ExprArrow(~ArrowExpression),
-    ExprSequence(~SequenceExpression),
-    ExprUnary(~UnaryExpression),
-    ExprBinary(~BinaryExpression),
-    ExprAssignment(~AssignmentExpression),
-    ExprUpdate(~UpdateExpression),
-    ExprLogical(~LogicalExpression),
-    ExprConditional(~CondionalExpression),
-    ExprNew(~NewExpression),
-    ExprCall(~CallExpression),
-    ExprMember(~MemberExpression),
+    ExprThis(~Node<ThisExpression>),
+    ExprArray(~Node<ArrayExpression>),
+    ExprObject(~Node<ObjectExpression>),
+    ExprFunction(~Node<FunctionExpression>),
+    ExprArrow(~Node<ArrowExpression>),
+    ExprSequence(~Node<SequenceExpression>),
+    ExprUnary(~Node<UnaryExpression>),
+    ExprBinary(~Node<BinaryExpression>),
+    ExprAssignment(~Node<AssignmentExpression>),
+    ExprUpdate(~Node<UpdateExpression>),
+    ExprLogical(~Node<LogicalExpression>),
+    ExprConditional(~Node<CondionalExpression>),
+    ExprNew(~Node<NewExpression>),
+    ExprCall(~Node<CallExpression>),
+    ExprMember(~Node<MemberExpression>),
     // From Miscellaneous.
-    ExprIdentifier(~Identifier),
+    ExprIdentifier(~Node<Identifier>),
 }
 
 pub struct ThisExpression;
@@ -255,7 +251,7 @@ pub enum ObjectExpressionPropertyKind {
 }
 
 pub struct ObjectExpressionProperty {
-    key: Either<Literal, Identifier>,
+    key: Either<Node<Literal>, Node<Identifier>>,
     value: Expression,
     kind: ObjectExpressionPropertyKind,
 }
@@ -265,12 +261,12 @@ pub struct ObjectExpression {
 }
 
 pub struct FunctionExpression {
-    function: FunctionBody,
+    function: Node<FunctionBody>,
 }
 
 pub struct ArrowExpression {
     // Remember that ArrowExpression does not have 'id' field.
-    function: FunctionBody,
+    function: Node<FunctionBody>,
 }
 
 pub struct SequenceExpression {
@@ -325,7 +321,7 @@ pub struct CallExpression {
 
 pub struct MemberExpression {
     object: Expression,
-    property: Either<Identifier, Expression>,
+    property: Either<Node<Identifier>, Expression>,
     computed: bool,
 }
 
@@ -339,7 +335,7 @@ pub struct SwitchCase {
 
 pub struct CatchClause {
     param: Pattern,
-    body: BlockStatement,
+    body: Node<BlockStatement>,
 }
 
 
@@ -423,3 +419,48 @@ pub enum UpdateOperator {
 }
 
 
+
+impl<T> Node<T> {
+    pub fn new(loc: SourceLocation, t: T) -> Node<T> {
+        Node {
+            loc: loc,
+            body: t,
+        }
+    }
+}
+
+impl SourceLocation {
+    pub fn new(start: Position, end: Position) -> SourceLocation {
+        SourceLocation {
+            start: start,
+            end: end,
+        }
+    }
+}
+
+impl Position {
+    pub fn new(line: u32, column: u32) -> Position {
+        Position {
+            line: line,
+            column: column,
+        }
+    }
+}
+
+impl Program {
+    pub fn new() -> Program {
+        Program {
+            body: ~[],
+        }
+    }
+}
+
+impl LogicalExpression {
+    pub fn new(op: LogicalOperator, left: Expression, right: Expression) -> LogicalExpression {
+        LogicalExpression {
+            operator: op,
+            left: left,
+            right: right
+        }
+    }
+}
