@@ -70,3 +70,29 @@ pub fn token_to_binary_operator(token: token::Token) -> ast::BinaryOperator {
         _ => fail!("{:?} is not a binary operator", token)
     }
 }
+
+pub fn token_to_unary_operator(token: token::Token) -> ast::UnaryOperator {
+    match token {
+        token::BINOP(token::PLUS) => ast::UO_PLUS,
+        token::BINOP(token::MINUS) => ast::UO_MINUS,
+        token::NOT => ast::UO_NOT,
+        token::BITWISE_NOT => ast::UO_BITWISE_NOT,
+        token::IDENT(ref ident) => {
+            match ident.as_slice() {
+                "void" => ast::UO_VOID,
+                "typeof" => ast::UO_TYPEOF,
+                "delete" => ast::UO_DELETE,
+                _ => fail!("{:?} is not a unary operator", token)
+            }
+        }
+        _ => fail!("{:?} is not a unary operator", token)
+    }
+}
+
+pub fn token_to_update_operator(token: token::Token) -> ast::UpdateOperator {
+    match token {
+        token::INCREMENT => ast::UO_INCREASE,
+        token::DECREMENT => ast::UO_DECREASE,
+        _ => fail!("{:?} is not a update operator", token)
+    }
+}

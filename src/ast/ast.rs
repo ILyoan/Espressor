@@ -275,8 +275,8 @@ pub struct SequenceExpression {
 
 pub struct UnaryExpression {
     operator: UnaryOperator,
-    prefix: bool,
     argument: Expression,
+    prefix: bool,
 }
 
 pub struct BinaryExpression {
@@ -451,6 +451,36 @@ impl Program {
     pub fn new() -> Program {
         Program {
             body: ~[],
+        }
+    }
+}
+
+impl UnaryExpression {
+    pub fn new(op: UnaryOperator, arg: Expression, prefix: bool) -> UnaryExpression {
+        UnaryExpression {
+            operator: op,
+            argument: arg,
+            prefix: prefix,
+        }
+    }
+}
+
+impl BinaryExpression {
+    pub fn new(op: BinaryOperator, left: Expression, right: Expression) -> BinaryExpression {
+        BinaryExpression {
+            operator: op,
+            left: left,
+            right: right
+        }
+    }
+}
+
+impl UpdateExpression {
+    pub fn new(op: UpdateOperator, arg: Expression, prefix: bool) -> UpdateExpression {
+        UpdateExpression {
+            operator: op,
+            argument: arg,
+            prefix: prefix,
         }
     }
 }
