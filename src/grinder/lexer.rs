@@ -47,6 +47,10 @@ impl Lexer {
             None
         }
     }
+
+    pub fn is_eof(&self) -> bool {
+        self.reader.is_eof()
+    }
 }
 
 fn lex_error(reader: &Reader, msg: LexMessage, mtype: LexMessageType) -> ! {
@@ -330,7 +334,7 @@ mod test {
     use super::super::token;
 
     #[test]
-    fn simple_test_2() {
+    fn simple_test() {
         let src = ~"var a = 1; var b=2; a+ b;";
         let mut lexer = Lexer::new(src);
         assert_eq!(lexer.next_token(), Some(token::IDENT(~"var")));

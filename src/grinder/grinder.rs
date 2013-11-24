@@ -8,5 +8,6 @@ extern mod ast;
 
 pub mod reader;
 pub mod lexer;
+pub mod parser;
 mod token;
 mod util;
