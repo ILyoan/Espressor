@@ -1,8 +1,8 @@
 #[deriving(Clone, Eq, IterBytes)]
 pub enum Binop {
     LSH,
-    URSH,
     RSH,
+    URSH,
     PLUS,
     MINUS,
     MUL,
@@ -11,7 +11,6 @@ pub enum Binop {
     BITWISE_AND,
     BITWISE_OR,
     BITWISE_XOR,
-    BITWISE_NOT,
 }
 
 #[deriving(Clone, Eq, IterBytes)]
@@ -31,6 +30,7 @@ pub enum Token {
     NOT,
     OR,
     AND,
+    BITWISE_NOT,
     BINOP(Binop),
     BINOPEQ(Binop), 
 

@@ -308,8 +308,8 @@ fn scan_operator_or_structure(reader: &mut Reader) -> token::Token {
         '*' => { reader.bump(); binop(reader, token::MUL) } // "*" or "*="
         '/' => { reader.bump(); binop(reader, token::DIV) } // "/" or "/="
         '^' => { reader.bump(); binop(reader, token::BITWISE_XOR) } // "^" or "^="
-        '~' => { reader.bump(); binop(reader, token::BITWISE_NOT) } // "~" or "~="
 
+        '~' => { reader.bump(); token::BITWISE_NOT } // "~"
         ';' => { reader.bump(); token::SEMICOLON }
         ',' => { reader.bump(); token::COMMA }
         '?' => { reader.bump(); token::HOOK }
