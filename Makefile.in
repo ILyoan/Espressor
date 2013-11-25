@@ -1,0 +1,39 @@
+include config.mk
+
+RUSTC=$(CFG_RUSTC)
+RUSTC_FLAG=-L $(CFG_LIB_DIR)
+
+
+AST_DIR=$(CFG_SRC_DIR)ast/
+AST_CRATE=$(AST_DIR)ast.rs
+AST_SRC=$(AST_DIR)ast.rs \
+		$(AST_DIR)node_type.rs
+AST_OUT=$(CFG_LIB_DIR)ast
+
+
+GRINDER_DIR=$(CFG_SRC_DIR)grinder/
+GRINDER_CRATE=$(GRINDER_DIR)grinder.rs
+GRINDER_SRC=$(GRINDER_DIR)grinder.rs \
+			$(GRINDER_DIR)util.rs \
+			$(GRINDER_DIR)token.rs \
+			$(GRINDER_DIR)reader.rs \
+			$(GRINDER_DIR)lexer.rs \
+			$(GRINDER_DIR)parser.rs
+GRINDER_OUT=$(CFG_LIB_DIR)grinder
+
+ESPRESSOR_DIR=$(CFG_SRC_DIR)
+ESPRESSOR_CRATE=$(ESPRESSOR_DIR)espressor.rs
+ESPRESSOR_SRC=$(ESPRESSOR_DIR)espressor.rs
+ESPRESSOR_OUT=$(CFG_BIN_DIR)espressor
+
+all: espressor
+
+ast: $(AST_SRC)
+	$(RUSTC) -o $(AST_OUT) $(AST_CRATE) $(RUSTC_FLAG)
+
+grinder: $(GRINDER_SRC)
+	$(RUSTC) -o $(GRINDER_OUT) $(GRINDER_CRATE) $(RUSTC_FLAG)
+
+espressor: $(ESPRESSOR_SRC) ast grinder
+	$(RUSTC) -o $(ESPRESSOR_OUT) $(ESPRESSOR_CRATE) $(RUSTC_FLAG)
+
