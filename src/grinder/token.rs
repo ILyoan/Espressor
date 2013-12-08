@@ -106,3 +106,8 @@ pub enum Keyword {
     With,
 }
 
+impl ToStr for Token {
+    fn to_str(&self) -> ~str {
+        ~""
+    }
+}

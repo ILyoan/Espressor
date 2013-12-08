@@ -36,7 +36,7 @@ impl Parser {
 
     pub fn parse(&mut self) {
         while !self.is_eof() {
-            self.parse_statement()
+            self.parse_statement();
         }
     }
 
@@ -61,12 +61,21 @@ impl Parser {
     }
 
     #[inline]
-    fn bump_if(&mut self, token: token::Token) -> bool {
+    fn bump_if(&mut self, token: &token::Token) -> bool {
         if self.is_curr(token) {
             self.bump();
             true
         } else {
             false
+        }
+    }
+
+    #[inline]
+    fn bump_expected(&mut self, token: &token::Token) {
+        if self.is_curr(token) {
+            self.bump();
+        } else {
+            fail!("Token expected {:?}, but found {:?}", token, self.token);
         }
     }
 
@@ -81,8 +90,8 @@ impl Parser {
     }
 
     #[inline]
-    fn is_curr(&self, token: token::Token) -> bool {
-        self.token == token
+    fn is_curr(&self, token: &token::Token) -> bool {
+        self.token == *token
     }
 
     #[inline]
@@ -100,14 +109,75 @@ impl Parser {
     }
 
 
-    // ECMA 11.2 Left-Hand-Side Expressions
-    fn parse_left_hand_side_expression(&mut self) -> ast::Expression {
+    // ECMA 11.1 Primary expressions
+    fn parse_primary_expression(&mut self) -> ast::Expression {
         fail!("Not Implemented");
+    }
+
+
+    // ECMA 11.2 Left-Hand-Side Expressions
+    fn parse_new_expression(&mut self) -> ast::Expression {
+        let exp = self.parse_left_hand_side_expression(false);
+        let arg = if self.is_curr(&token::LPAREN) {
+            self.parse_arguments()
+        } else {
+            ~[]
+        };
+        ast::ExprNew(~self.new_node(ast::NewExpression::new(exp, arg)))
+    }
+
+    fn parse_arguments(&mut self) -> ~[ast::Expression] {
+        let mut args = ~[];
+        self.bump_expected(&token::LPAREN);
+        while !self.bump_if(&token::RPAREN) {
+            self.parse_assignment_expression();
+            self.bump_expected(&token::COMMA);
+        }
+        args
+    }
+
+    fn parse_identifier_name(&mut self) -> ast::Identifier {
+        let ident = self.bump_curr();
+        if !util::is_ident_name(&ident) {
+            fail!("Expect identifiner name but found {:?}", ident);
+        }
+        ast::Identifier::new(ident.to_str())
+    }
+
+    fn parse_left_hand_side_expression(&mut self, is_allow_call: bool) -> ast::Expression {
+        let mut exp = if self.bump_if(&token::IDENT(~"new")) {
+            self.parse_new_expression()
+        } else {
+            self.parse_primary_expression()
+        };
+        loop {
+            match self.token {
+                token::LBRACKET => {
+                    self.bump();
+                    let property = self.parse_expression();
+                    exp = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_expression(exp, property)));
+                    self.bump_expected(&token::RBRACKET);
+                }
+                token::DOT => {
+                    self.bump();
+                    let property = self.parse_identifier_name();
+                    exp = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_identifier(exp, property)));
+                }
+                token::LPAREN if is_allow_call => {
+                    let args = self.parse_arguments();
+                    exp = ast::ExprCall(~self.new_node(ast::CallExpression::new(exp, args)));
+                }
+                _ => {
+                    break;
+                }
+            }
+        }
+        exp
     }
 
     // ECMA 11.3 Postfix Expressions
     fn parse_postfix_expression(&mut self) -> ast::Expression {
-        let exp = self.parse_left_hand_side_expression();
+        let exp = self.parse_left_hand_side_expression(true);
         if self.is_curr_any([token::INCREMENT, token::DECREMENT]) {
             let op = self.bump_curr();
             ast::ExprUpdate(~self.new_node(ast::UpdateExpression::new(util::token_to_update_operator(op), exp, false)))
@@ -195,7 +265,7 @@ impl Parser {
     // ECMA 11.10 Binary Bitwise Operators
     fn parse_bitwise_and_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_equality_expression();
-        while self.bump_if(token::BINOP(token::BITWISE_AND)) {
+        while self.bump_if(&token::BINOP(token::BITWISE_AND)) {
             let exp2 = self.parse_equality_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_AND, exp, exp2)));
         }
@@ -203,7 +273,7 @@ impl Parser {
     }
     fn parse_bitwise_xor_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_and_expression();
-        while self.bump_if(token::BINOP(token::BITWISE_XOR)) {
+        while self.bump_if(&token::BINOP(token::BITWISE_XOR)) {
             let exp2 = self.parse_bitwise_and_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_XOR, exp, exp2)));
         }
@@ -212,7 +282,7 @@ impl Parser {
 
     fn parse_bitwise_or_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_xor_expression();
-        while self.bump_if(token::BINOP(token::BITWISE_OR)) {
+        while self.bump_if(&token::BINOP(token::BITWISE_OR)) {
             let exp2 = self.parse_bitwise_xor_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_OR, exp, exp2)));
         }
@@ -223,7 +293,7 @@ impl Parser {
     // ECMA 11.11 Binary Logical Operators
     fn parse_logical_and_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_or_expression();
-        while self.bump_if(token::AND) {
+        while self.bump_if(&token::AND) {
             let exp2 = self.parse_bitwise_or_expression();
             exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
         }
@@ -232,7 +302,7 @@ impl Parser {
     
     fn parse_logical_or_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_logical_and_expression();
-        while self.bump_if(token::OR) {
+        while self.bump_if(&token::OR) {
             let exp2 = self.parse_logical_and_expression();
             exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
         }
@@ -240,25 +310,25 @@ impl Parser {
     }
 
     // ECMA 11.12 Conditional Operator ( ? : )
-    fn parse_conditional_expression(&mut self) {
+    fn parse_conditional_expression(&mut self) -> ast::Expression {
         fail!("Not Implemented");
     }
 
     // ECMA 11.13 Assignment Operators
-    fn parse_assignment_expression(&mut self) {
+    fn parse_assignment_expression(&mut self) -> ast::Expression {
         self.parse_conditional_expression();
         fail!("Not Implemented")
     }
 
     // ECMA 11.14 Comma Operator ( , )
-    fn parse_expression(&mut self) {
+    fn parse_expression(&mut self) -> ast::Expression {
         self.parse_assignment_expression();
         fail!("Not Implemented");
     }
 
 
     // ECMA 12 Statement
-    fn parse_statement(&mut self) {
+    fn parse_statement(&mut self) -> ast::Statement {
         // FIXME: remove copy.
         let token = self.token.clone();
         match token {
@@ -282,103 +352,106 @@ impl Parser {
                     _ => fail!("Not Implemented")
                 }
             }
-            _ => self.parse_expression(),
+            _ => {
+                let expr = self.parse_expression();
+                ast::StmtExpression(~self.new_node(ast::ExpressionStatement::new(expr)))
+            }
         }
     }
 
     // ECMA 12.1 Block
-    fn parse_block(&mut self) {
+    fn parse_block(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
-    fn parse_statmemt_list(&mut self) {
+    fn parse_statmemt_list(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.2 Variable Statement
-    fn parse_variable_statment(&mut self) {
+    fn parse_variable_statment(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.3 Empty Statement
-    fn parse_empty_statement(&mut self) {
+    fn parse_empty_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.4 Expression Statement
-    fn parse_expression_statement(&mut self) {
+    fn parse_expression_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.5 if Statement
-    fn parse_if_statement(&mut self) {
+    fn parse_if_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.6 Iteration Statement
 
     // ECMA 12.6.1 do-while Statement
-    fn parse_do_while_statement(&mut self) {
+    fn parse_do_while_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.6.2 while Statement
-    fn parse_while_statement(&mut self) {
+    fn parse_while_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.6.3 for Statement
-    fn parse_for_statement(&mut self) {
+    fn parse_for_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.6.4 for-in Statement
-    fn parse_for_in_statement(&mut self) {
+    fn parse_for_in_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.7 continue Statement
-    fn parse_continue_statement(&mut self) {
+    fn parse_continue_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.8 break Statement
-    fn parse_break_statement(&mut self) {
+    fn parse_break_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.9 return Statement
-    fn parse_return_statement(&mut self) {
+    fn parse_return_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.10 with Statement
-    fn parse_with_statement(&mut self) {
+    fn parse_with_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.11 switch Statement
-    fn parse_switch_statement(&mut self) {
+    fn parse_switch_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.12 Labelled Statement
-    fn parse_labelled_statement(&mut self) {
+    fn parse_labelled_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.13 throw Statement
-    fn parse_throw_statement(&mut self) {
+    fn parse_throw_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.14 try Statement
-    fn parse_try_statement(&mut self) {
+    fn parse_try_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 
     // ECMA 12.15 debugger Statement
-    fn parse_debugger_statement(&mut self) {
+    fn parse_debugger_statement(&mut self) -> ast::Statement {
         fail!("Not Implemented");
     }
 }

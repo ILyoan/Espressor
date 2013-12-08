@@ -321,7 +321,7 @@ pub struct CallExpression {
 
 pub struct MemberExpression {
     object: Expression,
-    property: Either<Node<Identifier>, Expression>,
+    property: Either<Identifier, Expression>,
     computed: bool,
 }
 
@@ -455,6 +455,15 @@ impl Program {
     }
 }
 
+
+impl ExpressionStatement {
+    pub fn new(expression: Expression) -> ExpressionStatement {
+        ExpressionStatement {
+            expression: expression,
+        }
+    }
+}
+
 impl UnaryExpression {
     pub fn new(op: UnaryOperator, arg: Expression, prefix: bool) -> UnaryExpression {
         UnaryExpression {
@@ -470,7 +479,7 @@ impl BinaryExpression {
         BinaryExpression {
             operator: op,
             left: left,
-            right: right
+            right: right,
         }
     }
 }
@@ -490,7 +499,51 @@ impl LogicalExpression {
         LogicalExpression {
             operator: op,
             left: left,
-            right: right
+            right: right,
+        }
+    }
+}
+
+impl NewExpression {
+    pub fn new(callee: Expression, arguments: ~[Expression]) -> NewExpression {
+        NewExpression {
+            callee: callee,
+            arguments: arguments,
+        }
+    }
+}
+
+impl CallExpression {
+    pub fn new(callee: Expression, arguments: ~[Expression]) -> CallExpression {
+        CallExpression {
+            callee: callee,
+            arguments: arguments,
+        }
+    }
+}
+
+impl MemberExpression {
+    pub fn new_from_identifier(object: Expression, property: Identifier) -> MemberExpression {
+        MemberExpression {
+            object: object,
+            property: Left(property),
+            computed: false,
+        }
+    }
+
+    pub fn new_from_expression(object: Expression, property: Expression) -> MemberExpression {
+        MemberExpression {
+            object: object,
+            property: Right(property),
+            computed: true,
+        }
+    }
+}
+
+impl Identifier {
+    pub fn new(name: &str) -> Identifier {
+        Identifier {
+            name: name.to_owned(),
         }
     }
 }

@@ -34,6 +34,18 @@ pub fn is_ident_continue(ch: char) -> bool {
 }
 
 #[inline(always)]
+pub fn is_ident_name(token: &token::Token) -> bool {
+    match *token {
+        token::IDENT(ref ident) => true,
+        token::LITERAL(ref lit) => match *lit {
+            token::LIT_BOOL(_) => true,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+#[inline(always)]
 pub fn is_dec_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
 }
