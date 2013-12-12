@@ -236,6 +236,7 @@ pub enum Expression {
     ExprMember(~Node<MemberExpression>),
     // From Miscellaneous.
     ExprIdentifier(~Node<Identifier>),
+    ExprLiteral(~Node<Literal>),
 }
 
 pub struct ThisExpression;
@@ -419,6 +420,7 @@ pub enum UpdateOperator {
 }
 
 
+// Impls for Node
 
 impl<T> Node<T> {
     pub fn new(loc: SourceLocation, t: T) -> Node<T> {
@@ -456,10 +458,70 @@ impl Program {
 }
 
 
+// Impls for Statements.
+
 impl ExpressionStatement {
     pub fn new(expression: Expression) -> ExpressionStatement {
         ExpressionStatement {
             expression: expression,
+        }
+    }
+}
+
+
+// Impls for expressions.
+
+impl ThisExpression {
+    pub fn new() -> ThisExpression {
+        ThisExpression
+    }
+}
+
+impl ArrayExpression {
+    pub fn new(elements: ~[Option<Expression>]) -> ArrayExpression {
+        ArrayExpression {
+            elements: elements,
+        }
+    }
+}
+
+impl ObjectExpressionProperty {
+    pub fn new(key: Either<Node<Literal>, Node<Identifier>>,
+               value: Expression,
+               kind: ObjectExpressionPropertyKind)
+            -> ObjectExpressionProperty {
+        ObjectExpressionProperty {
+            key: key,
+            value: value,
+            kind: kind,
+        }
+    }
+    pub fn from_literal(literal: Node<Literal>,
+                        value: Expression,
+                        kind: ObjectExpressionPropertyKind)
+            -> ObjectExpressionProperty {
+        ObjectExpressionProperty {
+            key: Left(literal),
+            value: value,
+            kind: kind,
+        }
+    }
+    pub fn new_from_identifier(identifier: Node<Identifier>,
+                               value: Expression,
+                               kind: ObjectExpressionPropertyKind)
+            -> ObjectExpressionProperty {
+        ObjectExpressionProperty {
+            key: Right(identifier),
+            value: value,
+            kind: kind,
+        }
+    }
+}
+
+impl ObjectExpression {
+    pub fn new(properties: ~[ObjectExpressionProperty]) -> ObjectExpression {
+        ObjectExpression {
+            properties: properties,
         }
     }
 }
@@ -530,7 +592,6 @@ impl MemberExpression {
             computed: false,
         }
     }
-
     pub fn new_from_expression(object: Expression, property: Expression) -> MemberExpression {
         MemberExpression {
             object: object,
@@ -540,10 +601,19 @@ impl MemberExpression {
     }
 }
 
+
 impl Identifier {
     pub fn new(name: &str) -> Identifier {
         Identifier {
             name: name.to_owned(),
+        }
+    }
+}
+
+impl Literal {
+    pub fn new(value: LiteralValue) -> Literal {
+        Literal {
+            value: value,
         }
     }
 }

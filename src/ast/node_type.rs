@@ -24,6 +24,7 @@ use super::{ExprThis, ExprArray, ExprObject, ExprFunction};
 use super::{ExprArrow, ExprSequence, ExprUnary, ExprBinary};
 use super::{ExprAssignment, ExprUpdate, ExprLogical, ExprConditional};
 use super::{ExprNew, ExprCall, ExprMember, ExprIdentifier};
+use super::{ExprLiteral};
 use super::{ThisExpression, ArrayExpression, ObjectExpression, FunctionExpression};
 use super::{ArrowExpression, SequenceExpression, UnaryExpression, BinaryExpression};
 use super::{AssignmentExpression, UpdateExpression, LogicalExpression, CondionalExpression};
@@ -188,6 +189,7 @@ impl NodeType for Expression {
             ExprCall(ref v) => v.type_name(),
             ExprMember(ref v) => v.type_name(),
             ExprIdentifier(ref v) => v.type_name(),
+            ExprLiteral(ref v) => v.type_name(),
         }
     }
 }

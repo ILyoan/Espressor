@@ -61,7 +61,7 @@ impl Parser {
     }
 
     #[inline]
-    fn bump_if(&mut self, token: &token::Token) -> bool {
+    fn bump_if(&mut self, token: token::Token) -> bool {
         if self.is_curr(token) {
             self.bump();
             true
@@ -71,11 +71,11 @@ impl Parser {
     }
 
     #[inline]
-    fn bump_expected(&mut self, token: &token::Token) {
-        if self.is_curr(token) {
+    fn bump_expected(&mut self, token: token::Token) {
+        if self.is_curr(token.clone()) {
             self.bump();
         } else {
-            fail!("Token expected {:?}, but found {:?}", token, self.token);
+            fail!("Expected token {:?}, but found {:?}", token, self.token);
         }
     }
 
@@ -89,9 +89,14 @@ impl Parser {
         }
     }
 
-    #[inline]
-    fn is_curr(&self, token: &token::Token) -> bool {
-        self.token == *token
+    #[inline(always)]
+    fn is_curr(&self, token: token::Token) -> bool {
+        self.token == token
+    }
+
+    #[inline(always)]
+    fn is_next(&self, token: token::Token) -> bool {
+        self.token_next == token
     }
 
     #[inline]
@@ -111,14 +116,185 @@ impl Parser {
 
     // ECMA 11.1 Primary expressions
     fn parse_primary_expression(&mut self) -> ast::Expression {
+        match self.token {
+            token::KEYWORD(keyword) => {
+                match keyword {
+                    token::FUNCTION => {
+                        self.parse_function_expression()
+                    }
+                    token::THIS => {
+                        self.parse_this_expression()
+                    }
+                    _ => {
+                        fail!("Expcted primary expression but found {:?}", self.token);
+                    }
+                }
+            }
+            token::IDENT(_) => {
+                self.parse_identfier_expression()
+            }
+            token::LITERAL(_) => {
+                self.parse_literal_expression()
+            }
+            token::LBRACKET => {
+                self.parse_array_initialiser()
+            }
+            token::LBRACE => {
+                self.parse_object_lnitiliser()
+            }
+            token::LPAREN => {
+                self.parse_group_expression()
+            }
+            _ => {
+                fail!("Expcted primary expression but found {:?}", self.token);
+            }
+        }
+    }
+
+    // ECMA 11.1.1 The this Keyword
+    fn parse_this_expression(&mut self) -> ast::Expression {
+        self.bump_expected(token::KEYWORD(token::THIS));
+        ast::ExprThis(~self.new_node(ast::ThisExpression::new()))
+    }
+
+    // ECMA 11.1.2 Identifier Reference
+    fn parse_identfier_expression(&mut self) -> ast::Expression {
+        match self.bump_curr() {
+            token::IDENT(ref ident) => {
+                ast::ExprIdentifier(~self.new_node(ast::Identifier::new(*ident)))
+            }
+            _ => {
+                fail!("Expcted an identifier but found {:?}", self.token);
+            }
+        }
+    }
+
+    // ECMA 11.1.3 Literal Reference
+    fn parse_literal_expression(&mut self) -> ast::Expression {
+        match self.bump_curr() {
+            token::LITERAL(lit) => {
+                let val = match lit {
+                    token::LIT_NULL => ast::LV_Null,
+                    token::LIT_BOOL(v) => ast::LV_Boolean(v),
+                    token::LIT_NUMERIC(v) => ast::LV_Number(from_str(v).unwrap()),
+                    token::LIT_STRING(v) => ast::LV_String(v),
+                    token::LIT_REGEXP(v) => ast::LV_RegExp(v),                    
+                };
+                ast::ExprLiteral(~self.new_node(ast::Literal::new(val)))
+            }
+            _ => {
+                fail!("Expcted a literal but found {:?}", self.token);
+            }
+        }
+    }
+
+    // ECMA 11.1.4 Array Initialiser
+    fn parse_array_initialiser(&mut self) -> ast::Expression {
+        let mut elements = ~[];
+        self.bump_expected(token::LBRACKET);
+        while !self.is_curr(token::RBRACKET) {
+            if self.bump_if(token::COMMA) {
+                elements.push(None);
+            } else {
+                elements.push(Some(self.parse_assignment_expression()));
+                if !self.is_curr(token::RBRACKET) {
+                    self.bump_expected(token::COMMA);
+                }
+            }
+        }
+        self.bump_expected(token::RBRACKET);
+        ast::ExprArray(~self.new_node(ast::ArrayExpression::new(elements)))
+    }
+
+    // ECMA 11.1.5 Object Initialiser
+    fn parse_object_lnitiliser(&mut self) -> ast::Expression {
+        let mut properties = ~[];
+        self.bump_expected(token::LBRACE);
+        while !self.is_curr(token::RBRACE) {
+            properties.push(self.parse_property_assignment());
+            if !self.is_curr(token::RBRACE) {
+                self.bump_expected(token::COMMA);
+            }
+        }
+        self.bump_expected(token::RBRACE);
+        ast::ExprObject(~self.new_node(ast::ObjectExpression::new(properties)))
+    }
+
+    fn parse_property_assignment(&mut self) -> ast::ObjectExpressionProperty {
+        match self.token.clone() {
+            token::IDENT(ref ident) => {
+                match ident.as_slice() {
+                    "get" if !self.is_next(token::COLON) => {
+                        self.parse_property_get_function()
+                    }
+                    "set" if !self.is_next(token::COLON) => {
+                        self.parse_property_get_function()
+                    }
+                    _ => {
+                        self.parse_property_init()
+                    }
+                }
+            }
+            token::LITERAL(_) => {
+                self.parse_property_init()
+            }
+            _ => {
+                fail!("Not Implemented");
+            }
+        }
+    }
+
+    fn parse_perperty_name(&mut self)
+            -> Either<ast::Node<ast::Literal>, ast::Node<ast::Identifier>> {
         fail!("Not Implemented");
+    }
+
+    fn parse_property_init(&mut self) -> ast::ObjectExpressionProperty {
+        let name = self.parse_perperty_name();
+        self.bump_expected(token::COLON);
+        let expr = self.parse_assignment_expression();
+        ast::ObjectExpressionProperty::new(name, expr, ast::Init)
+    }
+
+    fn parse_property_get_function(&mut self) -> ast::ObjectExpressionProperty {
+        self.bump(); // "get"
+        let name = self.parse_perperty_name();
+        self.bump_expected(token::LPAREN);
+        self.bump_expected(token::RPAREN);
+        fail!("Not Implemented");
+        //ast::ObjectExpressionProperty::new(name, function, ast::Get)
+    }
+
+    fn parse_property_set_function(&mut self) -> ast::ObjectExpressionProperty {
+        self.bump(); // "set"
+        let name = self.parse_perperty_name();
+        self.bump_expected(token::LPAREN);
+        let param = self.bump_curr();
+        self.bump_expected(token::RPAREN);
+        match param {
+            token::IDENT(_) => {
+                fail!("Not Implemented");
+            }
+            _ => {
+                fail!("Expected identifier but found {:?}", param);
+            }
+        };
+        //ast::ObjectExpressionProperty::new(name, function, ast::Set)
+    }
+
+    // ECMA 11.1.6 The Group Operator
+    fn parse_group_expression(&mut self) -> ast::Expression {
+        self.bump_expected(token::LPAREN);
+        let expr = self.parse_expression();
+        self.bump_expected(token::RPAREN);
+        expr
     }
 
 
     // ECMA 11.2 Left-Hand-Side Expressions
     fn parse_new_expression(&mut self) -> ast::Expression {
         let exp = self.parse_left_hand_side_expression(false);
-        let arg = if self.is_curr(&token::LPAREN) {
+        let arg = if self.is_curr(token::LPAREN) {
             self.parse_arguments()
         } else {
             ~[]
@@ -128,24 +304,27 @@ impl Parser {
 
     fn parse_arguments(&mut self) -> ~[ast::Expression] {
         let mut args = ~[];
-        self.bump_expected(&token::LPAREN);
-        while !self.bump_if(&token::RPAREN) {
-            self.parse_assignment_expression();
-            self.bump_expected(&token::COMMA);
+        self.bump_expected(token::LPAREN);
+        while !self.is_curr(token::RPAREN) {
+            args.push(self.parse_assignment_expression());
+            if !self.bump_if(token::COMMA) {                
+                break;
+            }
         }
+        self.bump_expected(token::RPAREN);
         args
     }
 
     fn parse_identifier_name(&mut self) -> ast::Identifier {
         let ident = self.bump_curr();
         if !util::is_ident_name(&ident) {
-            fail!("Expect identifiner name but found {:?}", ident);
+            fail!("Expected an identifiner name but found {:?}", ident);
         }
         ast::Identifier::new(ident.to_str())
     }
 
     fn parse_left_hand_side_expression(&mut self, is_allow_call: bool) -> ast::Expression {
-        let mut exp = if self.bump_if(&token::IDENT(~"new")) {
+        let mut exp = if self.bump_if(token::IDENT(~"new")) {
             self.parse_new_expression()
         } else {
             self.parse_primary_expression()
@@ -156,7 +335,7 @@ impl Parser {
                     self.bump();
                     let property = self.parse_expression();
                     exp = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_expression(exp, property)));
-                    self.bump_expected(&token::RBRACKET);
+                    self.bump_expected(token::RBRACKET);
                 }
                 token::DOT => {
                     self.bump();
@@ -265,7 +444,7 @@ impl Parser {
     // ECMA 11.10 Binary Bitwise Operators
     fn parse_bitwise_and_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_equality_expression();
-        while self.bump_if(&token::BINOP(token::BITWISE_AND)) {
+        while self.bump_if(token::BINOP(token::BITWISE_AND)) {
             let exp2 = self.parse_equality_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_AND, exp, exp2)));
         }
@@ -273,7 +452,7 @@ impl Parser {
     }
     fn parse_bitwise_xor_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_and_expression();
-        while self.bump_if(&token::BINOP(token::BITWISE_XOR)) {
+        while self.bump_if(token::BINOP(token::BITWISE_XOR)) {
             let exp2 = self.parse_bitwise_and_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_XOR, exp, exp2)));
         }
@@ -282,7 +461,7 @@ impl Parser {
 
     fn parse_bitwise_or_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_xor_expression();
-        while self.bump_if(&token::BINOP(token::BITWISE_OR)) {
+        while self.bump_if(token::BINOP(token::BITWISE_OR)) {
             let exp2 = self.parse_bitwise_xor_expression();
             exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_OR, exp, exp2)));
         }
@@ -293,7 +472,7 @@ impl Parser {
     // ECMA 11.11 Binary Logical Operators
     fn parse_logical_and_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_bitwise_or_expression();
-        while self.bump_if(&token::AND) {
+        while self.bump_if(token::AND) {
             let exp2 = self.parse_bitwise_or_expression();
             exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
         }
@@ -302,7 +481,7 @@ impl Parser {
     
     fn parse_logical_or_expression(&mut self) -> ast::Expression {
         let mut exp = self.parse_logical_and_expression();
-        while self.bump_if(&token::OR) {
+        while self.bump_if(token::OR) {
             let exp2 = self.parse_logical_and_expression();
             exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
         }
@@ -452,6 +631,12 @@ impl Parser {
 
     // ECMA 12.15 debugger Statement
     fn parse_debugger_statement(&mut self) -> ast::Statement {
+        fail!("Not Implemented");
+    }
+
+
+    // ECMA 13 Function Definition
+    fn parse_function_expression(&mut self) -> ast::Expression {
         fail!("Not Implemented");
     }
 }
