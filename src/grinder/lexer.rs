@@ -89,7 +89,7 @@ fn scan_ident(reader: &mut Reader) -> token::Token {
         reader.bump();
     }
     do reader.with_str_from(start_idx) |ident| {
-        token::IDENT(ident.to_owned())
+        token::reserved_or_idnetifier(ident)
     }
 }
 
