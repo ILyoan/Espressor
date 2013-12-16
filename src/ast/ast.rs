@@ -460,6 +460,14 @@ impl Program {
 
 // Impls for Statements.
 
+impl BlockStatement {
+    pub fn new(body: ~[Statement]) -> BlockStatement {
+        BlockStatement {
+            body: body,
+        }
+    }
+}
+
 impl ExpressionStatement {
     pub fn new(expression: Expression) -> ExpressionStatement {
         ExpressionStatement {

@@ -543,23 +543,18 @@ impl Parser {
             token::SEMICOLON => self.parse_empty_statement(),
             token::LBRACE => self.parse_block(),
             token::LPAREN => self.parse_expression_statement(),
-            token::IDENT(ref ident) => {
-                match ident.as_slice() {
-                    "if" => self.parse_if_statement(),
-                    "do" => self.parse_do_while_statement(),
-                    "while" => self.parse_while_statement(),
-                    "for" => self.parse_for_statement(),
-                    "continue" => self.parse_continue_statement(),
-                    "break" => self.parse_with_statement(),
-                    "return" => self.parse_return_statement(),
-                    "with" => self.parse_with_statement(),
-                    "switch" => self.parse_switch_statement(),
-                    "throw" => self.parse_throw_statement(),
-                    "try" => self.parse_try_statement(),
-                    "var" => self.parse_variable_statment(),
-                    _ => fail!("Not Implemented")
-                }
-            }
+            token::KEYWORD(token::IF) => self.parse_if_statement(),
+            token::KEYWORD(token::DO) => self.parse_do_while_statement(),
+            token::KEYWORD(token::WHILE) => self.parse_while_statement(),
+            token::KEYWORD(token::FOR) => self.parse_for_statement(),
+            token::KEYWORD(token::CONTINUE) => self.parse_continue_statement(),
+            token::KEYWORD(token::WITH) => self.parse_with_statement(),
+            token::KEYWORD(token::RETURN) => self.parse_return_statement(),
+            token::KEYWORD(token::SWITCH) => self.parse_switch_statement(),
+            token::KEYWORD(token::THROW) => self.parse_throw_statement(),
+            token::KEYWORD(token::TRY) => self.parse_try_statement(),
+            token::KEYWORD(token::VAR) => self.parse_variable_statment(),
+            token::KEYWORD(v) => fail!("Not Implemented keyword {:?}", v),
             _ => {
                 let expr = self.parse_expression();
                 ast::StmtExpression(~self.new_node(ast::ExpressionStatement::new(expr)))
@@ -569,11 +564,18 @@ impl Parser {
 
     // ECMA 12.1 Block
     fn parse_block(&mut self) -> ast::Statement {
-        fail!("Not Implemented");
+        self.bump_expected(token::LBRACE);
+        let stmts = self.parse_statement_list();
+        self.bump_expected(token::RBRACE);
+        ast::StmtBlock(~self.new_node(ast::BlockStatement::new(stmts)))
     }
 
-    fn parse_statmemt_list(&mut self) -> ast::Statement {
-        fail!("Not Implemented");
+    fn parse_statement_list(&mut self) -> ~[ast::Statement] {
+        let mut stmts = ~[];
+        while !self.is_curr(token::RBRACE) {
+            stmts.push(self.parse_statement());
+        }
+        stmts
     }
 
     // ECMA 12.2 Variable Statement
