@@ -48,6 +48,20 @@ impl Lexer {
         }
     }
 
+    pub fn lex_semicolon(&mut self) -> Option<token::Token> {        
+        let line1 = self.reader.curr_pos().row;
+        self.reader.consume_whitespace_and_comments();
+        let line2 = self.reader.curr_pos().row;
+        if line1 != line2
+                || self.reader.bump_if(';')
+                || self.reader.is_eof()
+                || self.reader.is_curr('}') {
+            return Some(token::SEMICOLON);
+        } else {
+            None
+        }
+    }
+
     pub fn is_eof(&self) -> bool {
         self.reader.is_eof()
     }

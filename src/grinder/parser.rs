@@ -13,7 +13,7 @@ pub struct Parser {
     // The current token.
     priv token: token::Token,
     // Next token.
-    priv token_next: token::Token,
+    priv token_next: Option<token::Token>,
 }
 
 impl Parser {
@@ -30,7 +30,7 @@ impl Parser {
                     ast::Position::new(0, 0)),
                 ast::Program::new()),
             token: token,
-            token_next: token_next,
+            token_next: None,
         }
     }
 
@@ -48,8 +48,13 @@ impl Parser {
     #[inline]
     fn bump(&mut self) {
         if !self.is_eof() {
-            self.token = self.token_next.clone();
-            self.token_next = self.lexer.next_token().map_default(token::EOF, |token| token);
+            self.token = if self.token_next.is_some() {
+                // FIXME: remove unnecessary clone.
+                self.token_next.clone().unwrap()
+            } else {
+                self.lexer.next_token().map_default(token::EOF, |token| token)
+            };
+            self.token_next = None
         }
     }
 
@@ -89,14 +94,31 @@ impl Parser {
         }
     }
 
+    #[inline]
+    fn bump_semicolon(&mut self) {
+        // `token_next` should be None.
+        assert!(self.token_next.is_none());
+
+        if !self.is_eof() {
+            match self.lexer.lex_semicolon() {
+                Some(v) => self.token = v,
+                None => fail!("Expected semicolon(;), but found {:?}", self.bump_curr())
+            }
+        }
+    }
+
     #[inline(always)]
     fn is_curr(&self, token: token::Token) -> bool {
         self.token == token
     }
 
     #[inline(always)]
-    fn is_next(&self, token: token::Token) -> bool {
-        self.token_next == token
+    fn is_next(&mut self, token: token::Token) -> bool {
+        if self.token_next.is_none() {
+            self.token_next = Some(
+                self.lexer.next_token().map_default(token::EOF, |token| token));
+        }
+        *self.token_next.get_ref() == token
     }
 
     #[inline]
@@ -113,7 +135,7 @@ impl Parser {
             t)
     }
 
-
+    
     // ECMA 11.1 Primary expressions
     fn parse_primary_expression(&mut self) -> ast::Expression {
         match self.token {
