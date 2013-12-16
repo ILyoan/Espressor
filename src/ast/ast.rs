@@ -224,13 +224,13 @@ pub enum Expression {
     ExprObject(~Node<ObjectExpression>),
     ExprFunction(~Node<FunctionExpression>),
     ExprArrow(~Node<ArrowExpression>),
-    ExprSequence(~Node<SequenceExpression>),
     ExprUnary(~Node<UnaryExpression>),
     ExprBinary(~Node<BinaryExpression>),
-    ExprAssignment(~Node<AssignmentExpression>),
     ExprUpdate(~Node<UpdateExpression>),
     ExprLogical(~Node<LogicalExpression>),
-    ExprConditional(~Node<CondionalExpression>),
+    ExprConditional(~Node<ConditionalExpression>),
+    ExprAssignment(~Node<AssignmentExpression>),    
+    ExprSequence(~Node<SequenceExpression>),
     ExprNew(~Node<NewExpression>),
     ExprCall(~Node<CallExpression>),
     ExprMember(~Node<MemberExpression>),
@@ -270,10 +270,6 @@ pub struct ArrowExpression {
     function: Node<FunctionBody>,
 }
 
-pub struct SequenceExpression {
-    expression: ~[Expression],
-}
-
 pub struct UnaryExpression {
     operator: UnaryOperator,
     argument: Expression,
@@ -282,12 +278,6 @@ pub struct UnaryExpression {
 
 pub struct BinaryExpression {
     operator: BinaryOperator,
-    left: Expression,
-    right: Expression,
-}
-
-pub struct AssignmentExpression {
-    operator: AssignmentOperator,
     left: Expression,
     right: Expression,
 }
@@ -304,10 +294,20 @@ pub struct LogicalExpression {
     right: Expression,
 }
 
-pub struct CondionalExpression {
+pub struct ConditionalExpression {
     test: Expression,
-    alternate: Expression,
     consequent: Expression,
+    alternate: Expression,    
+}
+
+pub struct AssignmentExpression {
+    operator: AssignmentOperator,
+    left: Expression,
+    right: Expression,
+}
+
+pub struct SequenceExpression {
+    expression: ~[Expression],
 }
 
 pub struct NewExpression {
@@ -408,7 +408,7 @@ pub enum AssignmentOperator {
     AO_MOD, // "%="
     AO_LSH, // "<<="
     AO_RSH, // ">>="
-    AO_RUSH, // ">>>="
+    AO_URSH, // ">>>="
     AO_BITWISE_OR, // "|="
     AO_BITWISE_XOR, // "^="
     AO_BITWISE_AND, // "&="
@@ -562,6 +562,40 @@ impl LogicalExpression {
             operator: op,
             left: left,
             right: right,
+        }
+    }
+}
+
+impl ConditionalExpression {
+    pub fn new(test: Expression,
+               consequent: Expression,
+               alternate: Expression)
+            -> ConditionalExpression {
+        ConditionalExpression {
+            test: test,
+            consequent: consequent,
+            alternate: alternate,
+        }
+    }
+}
+
+impl AssignmentExpression {
+    pub fn new(operator: AssignmentOperator,
+               left: Expression,
+               right: Expression)
+            -> AssignmentExpression {
+        AssignmentExpression {
+            operator: operator,
+            left: left,
+            right: right,
+        }
+    }
+}
+
+impl SequenceExpression {
+    pub fn new(expression: ~[Expression]) -> SequenceExpression {
+        SequenceExpression {
+            expression: expression,
         }
     }
 }

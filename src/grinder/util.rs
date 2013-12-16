@@ -50,6 +50,43 @@ pub fn is_dec_digit(ch: char) -> bool {
     ch >= '0' && ch <= '9'
 }
 
+#[inline(always)]
+pub fn is_assignment_operator(token: &token::Token) -> bool {
+    match *token {
+        token::ASSIGN => true,
+        token::BINOPEQ(_) => true,
+        _ => false
+    }
+}
+
+pub fn convert_literal(literal: token::Literal) -> ast::LiteralValue {
+    match literal {
+        token::LIT_NULL => ast::LV_Null,
+        token::LIT_BOOL(v) => ast::LV_Boolean(v),
+        token::LIT_NUMERIC(v) => ast::LV_Number(from_str(v).unwrap()),
+        token::LIT_STRING(v) => ast::LV_String(v),
+        token::LIT_REGEXP(v) => ast::LV_RegExp(v),                    
+    }
+}
+
+pub fn token_to_assignment_operator(token: token::Token) -> ast::AssignmentOperator {
+    match token {
+        token::ASSIGN => ast::AO_ASSIGN,
+        token::BINOPEQ(token::PLUS) => ast::AO_PLUS,
+        token::BINOPEQ(token::MINUS) => ast::AO_MINUS,
+        token::BINOPEQ(token::MUL) => ast::AO_MUL,
+        token::BINOPEQ(token::DIV) => ast::AO_DIV,
+        token::BINOPEQ(token::MOD) => ast::AO_MOD,
+        token::BINOPEQ(token::LSH) => ast::AO_LSH,
+        token::BINOPEQ(token::RSH) => ast::AO_RSH,
+        token::BINOPEQ(token::URSH) => ast::AO_URSH,
+        token::BINOPEQ(token::BITWISE_OR) => ast::AO_BITWISE_OR,
+        token::BINOPEQ(token::BITWISE_XOR) => ast::AO_BITWISE_XOR,
+        token::BINOPEQ(token::BITWISE_AND) => ast::AO_BITWISE_AND,
+        _ => fail!("{:?} is not a assignment operator", token)
+    }
+}
+
 pub fn token_to_binary_operator(token: token::Token) -> ast::BinaryOperator {
     match token {
         token::EQ => ast::BO_EQ,
@@ -94,10 +131,10 @@ pub fn token_to_unary_operator(token: token::Token) -> ast::UnaryOperator {
                 "void" => ast::UO_VOID,
                 "typeof" => ast::UO_TYPEOF,
                 "delete" => ast::UO_DELETE,
-                _ => fail!("{:?} is not a unary operator", token)
+                _ => fail!("{:?} is not an unary operator", token)
             }
         }
-        _ => fail!("{:?} is not a unary operator", token)
+        _ => fail!("{:?} is not an unary operator", token)
     }
 }
 
@@ -105,6 +142,6 @@ pub fn token_to_update_operator(token: token::Token) -> ast::UpdateOperator {
     match token {
         token::INCREMENT => ast::UO_INCREASE,
         token::DECREMENT => ast::UO_DECREASE,
-        _ => fail!("{:?} is not a update operator", token)
+        _ => fail!("{:?} is not an update operator", token)
     }
 }

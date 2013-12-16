@@ -27,7 +27,7 @@ use super::{ExprNew, ExprCall, ExprMember, ExprIdentifier};
 use super::{ExprLiteral};
 use super::{ThisExpression, ArrayExpression, ObjectExpression, FunctionExpression};
 use super::{ArrowExpression, SequenceExpression, UnaryExpression, BinaryExpression};
-use super::{AssignmentExpression, UpdateExpression, LogicalExpression, CondionalExpression};
+use super::{AssignmentExpression, UpdateExpression, LogicalExpression, ConditionalExpression};
 use super::{NewExpression, CallExpression, MemberExpression};
 use super::{Identifier, Literal, SwitchCase, CatchClause};
 
@@ -227,8 +227,8 @@ impl NodeType for UpdateExpression {
 impl NodeType for LogicalExpression {
     fn type_name(&self) -> &str { "LogicalExpression" }
 }
-impl NodeType for CondionalExpression {
-    fn type_name(&self) -> &str { "CondionalExpression" }
+impl NodeType for ConditionalExpression {
+    fn type_name(&self) -> &str { "ConditionalExpression" }
 }
 impl NodeType for NewExpression {
     fn type_name(&self) -> &str { "NewExpression" }

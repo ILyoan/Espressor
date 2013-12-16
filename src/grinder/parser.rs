@@ -173,14 +173,8 @@ impl Parser {
     fn parse_literal_expression(&mut self) -> ast::Expression {
         match self.bump_curr() {
             token::LITERAL(lit) => {
-                let val = match lit {
-                    token::LIT_NULL => ast::LV_Null,
-                    token::LIT_BOOL(v) => ast::LV_Boolean(v),
-                    token::LIT_NUMERIC(v) => ast::LV_Number(from_str(v).unwrap()),
-                    token::LIT_STRING(v) => ast::LV_String(v),
-                    token::LIT_REGEXP(v) => ast::LV_RegExp(v),                    
-                };
-                ast::ExprLiteral(~self.new_node(ast::Literal::new(val)))
+                let lit = util::convert_literal(lit);
+                ast::ExprLiteral(~self.new_node(ast::Literal::new(lit)))
             }
             _ => {
                 fail!("Expcted a literal but found {:?}", self.token);
@@ -239,14 +233,25 @@ impl Parser {
                 self.parse_property_init()
             }
             _ => {
-                fail!("Not Implemented");
+                fail!("Expected PropertyName but found {:?}", self.token)
             }
         }
     }
 
     fn parse_perperty_name(&mut self)
             -> Either<ast::Node<ast::Literal>, ast::Node<ast::Identifier>> {
-        fail!("Not Implemented");
+        match self.bump_curr() {
+            token::LITERAL(lit) => {
+                let lit = util::convert_literal(lit);
+                Left(self.new_node(ast::Literal::new(lit)))
+            }
+            token::IDENT(ident) => {
+                Right(self.new_node(ast::Identifier::new(ident)))
+            }
+            v => {
+                fail!("Expected PropertyName but found {:?}", v)
+            }
+        }
     }
 
     fn parse_property_init(&mut self) -> ast::ObjectExpressionProperty {
@@ -324,7 +329,7 @@ impl Parser {
     }
 
     fn parse_left_hand_side_expression(&mut self, is_allow_call: bool) -> ast::Expression {
-        let mut exp = if self.bump_if(token::IDENT(~"new")) {
+        let mut expr = if self.bump_if(token::IDENT(~"new")) {
             self.parse_new_expression()
         } else {
             self.parse_primary_expression()
@@ -334,34 +339,34 @@ impl Parser {
                 token::LBRACKET => {
                     self.bump();
                     let property = self.parse_expression();
-                    exp = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_expression(exp, property)));
+                    expr = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_expression(expr, property)));
                     self.bump_expected(token::RBRACKET);
                 }
                 token::DOT => {
                     self.bump();
                     let property = self.parse_identifier_name();
-                    exp = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_identifier(exp, property)));
+                    expr = ast::ExprMember(~self.new_node(ast::MemberExpression::new_from_identifier(expr, property)));
                 }
                 token::LPAREN if is_allow_call => {
                     let args = self.parse_arguments();
-                    exp = ast::ExprCall(~self.new_node(ast::CallExpression::new(exp, args)));
+                    expr = ast::ExprCall(~self.new_node(ast::CallExpression::new(expr, args)));
                 }
                 _ => {
                     break;
                 }
             }
         }
-        exp
+        expr
     }
 
     // ECMA 11.3 Postfix Expressions
     fn parse_postfix_expression(&mut self) -> ast::Expression {
-        let exp = self.parse_left_hand_side_expression(true);
+        let expr = self.parse_left_hand_side_expression(true);
         if self.is_curr_any([token::INCREMENT, token::DECREMENT]) {
             let op = self.bump_curr();
-            ast::ExprUpdate(~self.new_node(ast::UpdateExpression::new(util::token_to_update_operator(op), exp, false)))
+            ast::ExprUpdate(~self.new_node(ast::UpdateExpression::new(util::token_to_update_operator(op), expr, false)))
         } else {
-            exp
+            expr
         }
     }
 
@@ -376,12 +381,12 @@ impl Parser {
                 token::IDENT(~"void"),
                 token::IDENT(~"typeof")]) {
             let op = self.bump_curr();
-            let exp = self.parse_unary_expression();
-            ast::ExprUnary(~self.new_node(ast::UnaryExpression::new(util::token_to_unary_operator(op), exp, true)))
+            let expr = self.parse_unary_expression();
+            ast::ExprUnary(~self.new_node(ast::UnaryExpression::new(util::token_to_unary_operator(op), expr, true)))
         } else if self.is_curr_any([token::INCREMENT, token::DECREMENT]) {
             let op = self.bump_curr();
-            let exp = self.parse_unary_expression();
-            ast::ExprUpdate(~self.new_node(ast::UpdateExpression::new(util::token_to_update_operator(op), exp, true)))
+            let expr = self.parse_unary_expression();
+            ast::ExprUpdate(~self.new_node(ast::UpdateExpression::new(util::token_to_update_operator(op), expr, true)))
         } else {
             self.parse_postfix_expression()
         }
@@ -389,120 +394,144 @@ impl Parser {
 
     // ECMA 11.5 Multiplicative Operators
     fn parse_multiplicative_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_unary_expression();
+        let mut expr = self.parse_unary_expression();
         while self.is_curr_any([token::BINOP(token::MUL), token::BINOP(token::DIV), token::BINOP(token::MOD)]) {
             let op = self.bump_curr();
-            let exp2 = self.parse_unary_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), exp, exp2)));
+            let expr2 = self.parse_unary_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), expr, expr2)));
         }
-        exp
+        expr
     }
 
     // ECMA 11.6 Additive Operators
     fn parse_additive_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_multiplicative_expression();
+        let mut expr = self.parse_multiplicative_expression();
         while self.is_curr_any([token::BINOP(token::PLUS), token::BINOP(token::MINUS)]) {
             let op = self.bump_curr();
-            let exp2 = self.parse_multiplicative_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), exp, exp2)));
+            let expr2 = self.parse_multiplicative_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), expr, expr2)));
         }
-        exp
+        expr
     }
     // ECMA 11.7 Bitwise Shift Operators
     fn parse_shift_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_additive_expression();
+        let mut expr = self.parse_additive_expression();
         while self.is_curr_any([token::BINOP(token::LSH), token::BINOP(token::RSH), token::BINOP(token::URSH)]) {
             let op = self.bump_curr();
-            let exp2 = self.parse_additive_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), exp, exp2)));
+            let expr2 = self.parse_additive_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), expr, expr2)));
         }
-        exp
+        expr
     }
 
     // ECMA 11.8 Relational Operators
     fn parse_relational_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_shift_expression();
+        let mut expr = self.parse_shift_expression();
         while self.is_curr_any([token::LT, token::GT, token::LE, token::GE, token::IDENT(~"instanceof"), token::IDENT(~"in")]) {
             let op = self.bump_curr();
-            let exp2 = self.parse_shift_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), exp, exp2)));
+            let expr2 = self.parse_shift_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), expr, expr2)));
         }
-        exp
+        expr
     }
 
     // ECMA 11.9 Equality Operators
     fn parse_equality_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_relational_expression();
+        let mut expr = self.parse_relational_expression();
         while self.is_curr_any([token::EQ, token::STRICT_EQ, token::NE, token::STRICT_NE]) {
             let op = self.bump_curr();
-            let exp2 = self.parse_relational_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), exp, exp2)));
+            let expr2 = self.parse_relational_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(util::token_to_binary_operator(op), expr, expr2)));
         }
-        exp
+        expr
     }
 
     // ECMA 11.10 Binary Bitwise Operators
     fn parse_bitwise_and_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_equality_expression();
+        let mut expr = self.parse_equality_expression();
         while self.bump_if(token::BINOP(token::BITWISE_AND)) {
-            let exp2 = self.parse_equality_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_AND, exp, exp2)));
+            let expr2 = self.parse_equality_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_AND, expr, expr2)));
         }
-        exp
+        expr
     }
     fn parse_bitwise_xor_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_bitwise_and_expression();
+        let mut expr = self.parse_bitwise_and_expression();
         while self.bump_if(token::BINOP(token::BITWISE_XOR)) {
-            let exp2 = self.parse_bitwise_and_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_XOR, exp, exp2)));
+            let expr2 = self.parse_bitwise_and_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_XOR, expr, expr2)));
         }
-        exp
+        expr
     }
 
     fn parse_bitwise_or_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_bitwise_xor_expression();
+        let mut expr = self.parse_bitwise_xor_expression();
         while self.bump_if(token::BINOP(token::BITWISE_OR)) {
-            let exp2 = self.parse_bitwise_xor_expression();
-            exp = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_OR, exp, exp2)));
+            let expr2 = self.parse_bitwise_xor_expression();
+            expr = ast::ExprBinary(~self.new_node(ast::BinaryExpression::new(ast::BO_BITWISE_OR, expr, expr2)));
         }
-        exp
+        expr
     }
 
 
     // ECMA 11.11 Binary Logical Operators
     fn parse_logical_and_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_bitwise_or_expression();
+        let mut expr = self.parse_bitwise_or_expression();
         while self.bump_if(token::AND) {
-            let exp2 = self.parse_bitwise_or_expression();
-            exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
+            let expr2 = self.parse_bitwise_or_expression();
+            expr = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, expr, expr2)));
         }
-        exp
+        expr
     }
     
     fn parse_logical_or_expression(&mut self) -> ast::Expression {
-        let mut exp = self.parse_logical_and_expression();
+        let mut expr = self.parse_logical_and_expression();
         while self.bump_if(token::OR) {
-            let exp2 = self.parse_logical_and_expression();
-            exp = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, exp, exp2)));
+            let expr2 = self.parse_logical_and_expression();
+            expr = ast::ExprLogical(~self.new_node(ast::LogicalExpression::new(ast::LO_OR, expr, expr2)));
         }
-        exp
+        expr
     }
 
     // ECMA 11.12 Conditional Operator ( ? : )
     fn parse_conditional_expression(&mut self) -> ast::Expression {
-        fail!("Not Implemented");
+        let mut expr = self.parse_logical_or_expression();
+        if self.bump_if(token::HOOK) {
+            let consquent = self.parse_assignment_expression();
+            self.bump_expected(token::COLON);
+            let alternate = self.parse_assignment_expression();
+            expr = ast::ExprConditional(
+                    ~self.new_node(ast::ConditionalExpression::new(expr, consquent, alternate)));
+        }
+        expr
     }
 
     // ECMA 11.13 Assignment Operators
     fn parse_assignment_expression(&mut self) -> ast::Expression {
-        self.parse_conditional_expression();
-        fail!("Not Implemented")
+        let mut expr = self.parse_conditional_expression();
+        if util::is_assignment_operator(&self.token) {
+            // FIXME: `expr` should be a LeftHandSideExpression.
+            let operator = self.bump_curr();
+            let operator = util::token_to_assignment_operator(operator);
+            let right = self.parse_assignment_expression();
+            expr = ast::ExprAssignment(
+                ~self.new_node(ast::AssignmentExpression::new(operator, expr, right)))
+        }
+        expr   
     }
 
     // ECMA 11.14 Comma Operator ( , )
     fn parse_expression(&mut self) -> ast::Expression {
-        self.parse_assignment_expression();
-        fail!("Not Implemented");
+        let expr = self.parse_assignment_expression();
+        if self.is_curr(token::COMMA) {
+            let mut exprs = ~[expr];
+            while self.bump_if(token::COMMA) {
+                exprs.push(self.parse_assignment_expression());
+            }
+            ast::ExprSequence(~self.new_node(ast::SequenceExpression::new(exprs)))
+        } else {
+            expr
+        }
     }
 
 
